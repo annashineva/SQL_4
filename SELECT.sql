@@ -76,9 +76,12 @@ GROUP BY album_name
 ORDER BY AVG(duration) DESC;
 
 SELECT singer_name FROM Singers s
-JOIN SingersAlbums sa ON s.id = sa.album_id
-JOIN Albums a ON sa.album_id = a.id
-WHERE a.release_year <= '2019-12-31' OR a.release_year >= '2021-01-01';
+WHERE singer_name NOT IN (
+    SELECT singer_name FROM Singers s
+    JOIN SingersAlbums sa ON s.id = sa.album_id
+    JOIN Albums a ON sa.album_id = a.id
+    WHERE a.release_year not between '2020-01-01' and '2020-12-31'
+);
 
 SELECT collection_name FROM Collections c
 JOIN TracksCollections tc ON c.id = tc.track_id
@@ -88,16 +91,16 @@ JOIN SingersAlbums sa ON a.id = sa.singer_id
 JOIN Singers s ON sa.album_id = s.id
 WHERE singer_name = 'Queen';
 
-SELECT album_name FROM Albums a
+SELECT DISTINCT album_name FROM Albums a
 JOIN SingersAlbums sa ON a.id = sa.singer_id
 JOIN Singers s ON sa.singer_id = s.id
 JOIN GenresSingers gs ON s.id = gs.singer_id
-GROUP BY album_name 
-HAVING count(gs.singer_id) > 1;
+GROUP BY a.album_name, gs.singer_id
+HAVING COUNT(gs.genre_id) > 1;
 
 SELECT track_name FROM Tracks t
-JOIN TracksCollections tc ON t.id = tc.collection_id
-WHERE t.id not in (SELECT track_id FROM TracksCollections tc);
+LEFT JOIN TracksCollections tc ON t.id = tc.track_id
+WHERE tc.track_id is NULL;
 
 SELECT singer_name from Singers s
 JOIN SingersAlbums sa ON s.id = sa.album_id
@@ -108,5 +111,9 @@ WHERE duration = (SELECT min(duration) FROM Tracks);
 SELECT album_name FROM Albums a
 JOIN Tracks t ON a.id = t.album_id
 GROUP BY album_name
-HAVING min((SELECT COUNT(t.album_id) FROM Tracks t)) !=0;
-
+HAVING COUNT(t.id) = (
+    SELECT COUNT(t.id) FROM Tracks t
+    GROUP BY t.album_id
+    ORDER BY 1
+    LIMIT 1
+);
